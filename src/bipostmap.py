@@ -16,9 +16,9 @@ class ResolveAddress(object):
         try:
             self.redis = redis.Redis(host = self.db_host,
                                  port = self.db_port)
-            logging.debug("Redis connection established")
+            logging.getLogger().debug("Redis connection established")
         except Exception, e:
-            logging.error("Redis connection failed %s",  str(e))
+            logging.getLogger().error("Redis connection failed %s",  str(e))
             raise BiPostmapException("DB Failure")
 
     def resolveToken(self, token):
@@ -26,12 +26,12 @@ class ResolveAddress(object):
             local = token.split('@')[0]
             user_address = self.redis.get('t2u:%s' % local)
             if user_address is not None:
-                logging.debug('returning %s' % local)
+                logging.getLogger().debug('returning %s' % local)
                 return user_address
-            logging.debug("Not found!")
+            logging.getLogger().debug("Not found!")
             return None
         except Exception, e:
-            logging.error("Unhandled Exception [%s]" % str(e))
+            logging.getLogger().error("Unhandled Exception [%s]" % str(e))
             raise
 
 
@@ -62,7 +62,7 @@ class BiPostmapServer(asyncore.dispatcher):
         try:
             (conn, addr) = self.accept()
         except socket.error, e:
-            logging.warn('warning: server accept() threw an exception ("%s")',
+            logging.getLogger().warn('warning: server accept() threw an exception ("%s")',
                           str(e))
             return None
         BiPostmapConnectionHandler(conn,
@@ -78,14 +78,16 @@ class BiPostmapDispatcher(object):
 
     def dispatch(self, data):
         try:
-            data = data.strip().split(' ')[1]
+            # Commands are either GET or PUT, Only GET is recognized.
+            cmd, data = data.strip().split(' ')
+            if "GET" not in cmd.upper():
+                return {'name': 'Unsupported command', 'code': 400}
             username = self._server_class.resolveToken(data)
             if username:
                 return {'name': username, 'code': 200}
             return {'name': 'Unrecognized Address', 'code': 500}
         except Exception, e:
-            import pdb; pdb.set_trace();
-            logging.info('Perm Failure: %s', str(e))
+            logging.getLogger().info('Perm Failure: %s', str(e))
             return {'name': 'Lookup failure', 'code': 400}
 
 
@@ -107,22 +109,22 @@ class BiPostmapConnectionHandler(asynchat.async_chat):
     def log_info(self, message, type='info'):
         """Provide useful logging for uncaught exceptions"""
         if type == 'info':
-            logging.debug(message)
+            logging.getLogger().debug(message)
         else:
-            logging.error(message)
+            logging.getLogger().error(message)
 
     def respond(self, response):
         if 'name' not in response:
             raise BiPostmapException("missing return name")
-        logging.debug('  >>> [%s] %s' % (response.get('code', 400),
+        logging.getLogger().debug('  >>> [%s] %s' % (response.get('code', 400),
                                          response.get('name')))
-        self.push("%d %s \n" % (int(response.get('code', 400)),
+        self.push("%d %s\n" % (int(response.get('code', 400)),
                                 str(response.get('name'))))
 
     def read_data(self):
         inbuff = "".join(self._input)
         self._input = []
-        logging.debug(' request: %s' % inbuff)
+        logging.getLogger().debug(' request: %s' % inbuff)
         try:
             response = self._dispatcher.dispatch(inbuff)
             if type(response) == list:
@@ -130,14 +132,16 @@ class BiPostmapConnectionHandler(asynchat.async_chat):
                     self.respond(r)
             elif response:
                 self.respond(response)
-            self.close()
+            else:
+                self.respond({'name': 'Unknown Recipent', 'code': 500})
         except Exception, e:
-            import pdb; pdb.set_trace()
             self.respond({'name': 'Unexpected error', 'code': 400})
+        self.close()
 
 
 if __name__ == '__main__':
     appName = sys.argv[0].split('.')[0]
+    logging.basicConfig(stream = sys.stderr, level = logging.DEBUG)
     try:
         opts, args = getopt.getopt(sys.argv[1:], 'c:d', ['config='])
         config = None
@@ -149,13 +153,13 @@ if __name__ == '__main__':
             if os.path.exists(iniFileName):
                 config = Config(iniFileName).get_map()
         if config is None:
-            logging.error("No configuration found. Aborting")
+            logging.getLogger().error("No configuration found. Aborting")
             exit()
     except Exception, e:
-        logging.error("Unhandled exception encountered. %s" % str(e))
+        logging.getLogger().error("Unhandled exception encountered. %s" % str(e))
         exit()
-    port = config.get('default.port', 9999)
-    logging.info("Starting bipostmap on port: %s" % port)
+    port = config.get('default.port', 9998)
+    logging.getLogger().info("Starting bipostmap on port: %s" % port)
     # Sets the BiPostmapServer as the async core server.
     server = BiPostmapServer(port, ResolveAddress, config = config)
     asyncore.loop()
