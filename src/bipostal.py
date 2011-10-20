@@ -52,13 +52,11 @@ class BiPostalMilter(ppymilterbase.PpyMilter):
         try:
             return '%s%s\0' % (ppymilterbase.RESPONSE['REPLBODY'], content)
         except Exception, e:
-            import pdb; pdb.set_trace();
             logging.getLogger().error("Unhandled Exception [%s]", str(e))
             return None
 
     def OnBody(self, cmd, body = None):
         try:
-            import pdb; pdb.set_trace();
             if body:
                 self._newbody.append(body)
             return self.Continue()
@@ -68,7 +66,6 @@ class BiPostalMilter(ppymilterbase.PpyMilter):
 
     def OnEndBody(self, cmd):
         logging.getLogger().debug("Applying mutations")
-        import pdb; pdb.set_trace();
         if len(self._newbody):
             newbody = "%s\n%s\n%s" %("Header Stuff",
                                      "".join(self._newbody),
