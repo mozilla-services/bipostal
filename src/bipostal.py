@@ -6,7 +6,6 @@ import redis
 import os
 import sys
 import logging
-import struct
 
 from config import Config
 from ppymilter import (ppymilterserver,ppymilterbase)

@@ -24,7 +24,7 @@ class ResolveAddress(object):
     def resolveToken(self, token):
         try:
             local = token.split('@')[0]
-            user_address = self.redis.get('t2u:%s' % local)
+            user_address = self.redis.get('s2u:%s' % local)
             if user_address is not None:
                 logging.getLogger().debug('returning %s' % local)
                 return user_address
@@ -52,8 +52,8 @@ class BiPostmapServer(asyncore.dispatcher):
         self._server_class = server_class
         self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
         self.set_reuse_addr()
-        self.bind(('', config.get('postmap.port', 9998)))
-        self.listen(config.get('postmap.max_queued_connections', 1024))
+        self.bind(('', config.get('default.port', 9998)))
+        self.listen(config.get('default.max_queued_connections', 1024))
         self.config = config
 
     def handle_accept(self):
