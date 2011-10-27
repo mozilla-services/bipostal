@@ -1,14 +1,23 @@
-import asyncore
 import asynchat
+import asyncore
 import getopt
-import redis
-import os
-import sys
 import logging
+import os
+import redis
 import socket
+import sys
+
 from config import Config
 
+
 class ResolveAddress(object):
+    """ Connect to redis database to resolve the local-part to the outbound
+        email address
+
+        TODO:
+        * add abstract data class to connect to same db as Push
+        * add comments and clean up
+    """
     def __init__(self, config = None):
         self.config = config
         self.db_host = self.config.get('redis.host', 'localhost')
@@ -62,8 +71,8 @@ class BiPostmapServer(asyncore.dispatcher):
         try:
             (conn, addr) = self.accept()
         except socket.error, e:
-            logging.getLogger().warn('warning: server accept() threw an exception ("%s")',
-                          str(e))
+            logging.getLogger().warn('warning: server accept() ' +
+                    'threw an exception ("%s")', str(e))
             return None
         BiPostmapConnectionHandler(conn,
                                     addr,
@@ -135,6 +144,7 @@ class BiPostmapConnectionHandler(asynchat.async_chat):
             else:
                 self.respond({'name': 'Unknown Recipent', 'code': 500})
         except Exception, e:
+            logging.getLogger().error("Unexpected error %s " % str(e))
             self.respond({'name': 'Unexpected error', 'code': 400})
         self.close()
 
@@ -156,7 +166,8 @@ if __name__ == '__main__':
             logging.getLogger().error("No configuration found. Aborting")
             exit()
     except Exception, e:
-        logging.getLogger().error("Unhandled exception encountered. %s" % str(e))
+        logging.getLogger().error("Unhandled exception encountered. %s" %
+                str(e))
         exit()
     port = config.get('default.port', 9998)
     logging.getLogger().info("Starting bipostmap on port: %s" % port)

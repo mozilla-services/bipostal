@@ -2,50 +2,35 @@
 
 import asyncore
 import getopt
-import redis
+import logging
 import os
 import sys
-import logging
 
 from config import Config
-from ppymilter import (ppymilterserver,ppymilterbase)
+from mako.template import Template
+from ppymilter import (ppymilterserver, ppymilterbase)
 
-class ResolveAddress:
-    def __init__(self, config = None):
-        self.config = config
-        self.db_host = self.config.get('redis.host', 'localhost')
-        self.db_port = int(self.config.get('redis.port', '6379'))
-        self.redis = redis.Redis(host = self.db_host,
-                                 port = self.db_port)
-        logging.getLogger().debug("Redis connection established")
-
-    def resolveToken(self, token):
-        try:
-            # Is there a better email address tokenizer? Do we need one?
-            local = token.split('@')[0]
-            logging.getLogger().debug("Looking up token %s" % local)
-            user_address = self.redis.get('t2u:%s' % local)
-            if user_address is not None:
-                logging.getLogger().debug("returning %s" % local)
-                return user_address
-            logging.getLogger().debug("Not found!")
-            return token
-        except Exception, e:
-            logging.getLogger().error("Exception [%s]" % str(e))
-            raise
 
 class BiPostalMilter(ppymilterbase.PpyMilter):
+    """ Modify the mailer body and add header/footer content
 
-    config = None;
+        TODO:
+        * strip HTML content in favor of plain text.
+        * add Templater for header/footer code
+        * fetch user personalization content (needed?)
+        * use standardized config loader
+    """
+
+    config = None
 
     def __init__(self):
         self.config = getConfig()
         logging.getLogger().info("Initializing BiPostal")
         super(BiPostalMilter, self).__init__()
-        self.resolver = ResolveAddress(config=config)
         self.CanChangeBody()
         self._mutations = []
         self._newbody = []
+        self._info = {}
 
     def ChangeBody(self, content):
         try:
@@ -65,10 +50,15 @@ class BiPostalMilter(ppymilterbase.PpyMilter):
 
     def OnEndBody(self, cmd):
         logging.getLogger().debug("Applying mutations")
+        template_dir = os.path.join(self.config.get('default.template_dir',
+                                                    'templates'))
+        head_template = Template(os.path.join(template_dir, 'head.mako'))
+        foot_template = Template(os.path.join(template_dir, 'foot.mako'))
+
         if len(self._newbody):
-            newbody = "%s\n%s\n%s" %("Header Stuff",
+            newbody = "%s\n%s\n%s" % (head_template.render(info = self._info),
                                      "".join(self._newbody),
-                                     "Footer Stuff")
+                                     foot_template.render(info = self._info))
             self._mutations.append(self.ChangeBody(newbody))
         actions = self._mutations
         self._mutations = []
@@ -82,6 +72,7 @@ class BiPostalMilter(ppymilterbase.PpyMilter):
 def getLogger():
     logging.basicConfig(stream = sys.stderr, level = logging.DEBUG)
     return logging.getLogger()
+
 
 def getConfig(file = 'bipostal.ini'):
     if os.path.exists(file):
@@ -110,6 +101,5 @@ if __name__ == '__main__':
         exit()
     port = config.get('default.port', 9999)
     logger.info("Starting bipostal on port: %s" % port)
-#    bipostal = BiPostalMilter(config=config, logger=logger)
     ppymilterserver.AsyncPpyMilterServer(port, BiPostalMilter)
     asyncore.loop()
