@@ -1,0 +1,33 @@
+Known Bugs
+ o Re-examine Redis indexes for simplicity.
+ o Port redis-file data changes to mongo/memory models
+ o Add unit tests for bipostal
+ o Switch Beaker.session uid to be user token (from redis)
+ 
+Outstanding tasks
+ = Global =
+    * Add comments / code cleanup
+    * Install to public box
+    * load testing
+
+ = BiPostmap =
+    * Add database abstraction layer (allow alternate stores like notifications uses)
+
+ = BiPostal = 
+    * Strip HTML from incoming mail message
+        * use only text elements of mail
+        * ? handle attachments
+    * finalize header/footer
+        * ? append customer info data
+    * use standardized config loader
+
+ = BiPostalUI =
+    * Extract uicontroller and make separate pylons app.
+    * use standard config loader
+    * Allow for mulitple mail addresses 
+        * provide filtering (token => email address?)
+    * Add local BrowserID RSA signature checks
+        * pull BrowserID public key from server
+        * ? use rfkelly's browserid plugin
+    * ? Add usertoken to credential checks
+
