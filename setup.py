@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 requires = [
     'Redis',
     'Distribute',
-    'Mako'
+    'Mako',
 ]
 entry_points = """
 """

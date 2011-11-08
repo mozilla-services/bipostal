@@ -52,8 +52,10 @@ class BiPostalMilter(ppymilterbase.PpyMilter):
         logging.getLogger().debug("Applying mutations")
         template_dir = os.path.join(self.config.get('default.template_dir',
                                                     'templates'))
-        head_template = Template(os.path.join(template_dir, 'head.mako'))
-        foot_template = Template(os.path.join(template_dir, 'foot.mako'))
+        head_template = Template(filename = os.path.join(template_dir, 
+                'head.mako'))
+        foot_template = Template(filename = os.path.join(template_dir, 
+                'foot.mako'))
 
         if len(self._newbody):
             newbody = "%s\n%s\n%s" % (head_template.render(info = self._info),
