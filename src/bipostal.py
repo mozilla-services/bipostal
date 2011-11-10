@@ -34,7 +34,12 @@ class BiPostalMilter(ppymilterbase.PpyMilter):
 
     def ChangeBody(self, content):
         try:
-            return '%s%s\0' % (ppymilterbase.RESPONSE['REPLBODY'], content)
+            #NOTE: Postfix ONLY understands strings. Yes, this is overkill because 
+            # there are some instances where unicode sneaks through and it causes
+            # all sorts of Heisenbugs.
+            return str('%s%s' % 
+                    (ppymilterbase.RESPONSE['REPLBODY'], 
+                    str(content)))
         except Exception, e:
             logging.getLogger().error("Unhandled Exception [%s]", str(e))
             return None
