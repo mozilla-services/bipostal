@@ -1,0 +1,6 @@
+
+canonical_maps = tcp:localhost:9998
+smtpd_milters = inet:localhost:9999
+non_smtpd_milters = inet:localhost:9999
+# The following may be required if not previously defined
+# data_directory = /var/lib/postfix/
