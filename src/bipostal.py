@@ -34,7 +34,12 @@ class BiPostalMilter(ppymilterbase.PpyMilter):
 
     def ChangeBody(self, content):
         try:
-            return '%s%s\0' % (ppymilterbase.RESPONSE['REPLBODY'], content)
+            #NOTE: Postfix ONLY understands strings. Yes, this is overkill because 
+            # there are some instances where unicode sneaks through and it causes
+            # all sorts of Heisenbugs.
+            return str('%s%s' % 
+                    (ppymilterbase.RESPONSE['REPLBODY'], 
+                    str(content)))
         except Exception, e:
             logging.getLogger().error("Unhandled Exception [%s]", str(e))
             return None
@@ -52,8 +57,10 @@ class BiPostalMilter(ppymilterbase.PpyMilter):
         logging.getLogger().debug("Applying mutations")
         template_dir = os.path.join(self.config.get('default.template_dir',
                                                     'templates'))
-        head_template = Template(os.path.join(template_dir, 'head.mako'))
-        foot_template = Template(os.path.join(template_dir, 'foot.mako'))
+        head_template = Template(filename = os.path.join(template_dir, 
+                'head.mako'))
+        foot_template = Template(filename = os.path.join(template_dir, 
+                'foot.mako'))
 
         if len(self._newbody):
             newbody = "%s\n%s\n%s" % (head_template.render(info = self._info),
