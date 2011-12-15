@@ -35,6 +35,9 @@
 #
 # ***** END LICENSE BLOCK *****
 
+#  This file alters the content of the mail message.
+# Stripping non-HTML content, wrapping with a header/footer
+
 import asyncore
 import getopt
 import logging
