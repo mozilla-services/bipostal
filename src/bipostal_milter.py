@@ -119,7 +119,7 @@ def getLogger():
     return logging.getLogger()
 
 
-def getConfig(file = 'bipostal.ini'):
+def getConfig(file = 'bipostal_milter.ini'):
     if os.path.exists(file):
         return Config(file).get_map()
     logging.getLogger().warn("Config file %s not found." % file)
