@@ -189,6 +189,7 @@ def _get_conf():
     if os.path.exists(iniFileName):
         config = Config(iniFileName)
         return config
+    logging.error('No Config file found.')
     return None
 
 def _get_group(dictionary, group):
