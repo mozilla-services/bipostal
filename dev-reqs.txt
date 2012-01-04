@@ -1,2 +1,4 @@
 nose
+funkload
+paramiko
 -e git://github.com/jrconlin/bipostal_store#egg=bipostal_storage
