@@ -1,4 +1,9 @@
+# External dependency: libevent 1.4.x
 nose
 funkload
 paramiko
+greenlet
+libevent
+libevent-dev
+sqlalchemy
 -e git://github.com/jrconlin/bipostal_store#egg=bipostal_storage
