@@ -95,7 +95,6 @@ class BiPostalMilter(ppymilterbase.PpyMilter):
             logging.getLogger().error("Failure to get body [%s]" % repr(e))
             return self.Discard()
 
-    # Restart the server and test this....
     def OnRcptTo(self, cmd, rcpt_to, esmtp_info):
         try:
             new_address = self.storage.resolve_alias(rcpt_to)

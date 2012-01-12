@@ -88,7 +88,6 @@ class Simple(FunkLoadTestCase):
             #option negotiation
             #Do everything
             #resp = sock.mexchange ("O\00\00\00\06\00\00\01\xFF\00\x1F\xFF\xFF", single=True)
-            print alias;
             resp = sock.mexchange ('R<%s>\000RCPT\x3Drfc822;%s\00' % (
                 alias,
                 alias))
