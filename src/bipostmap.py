@@ -48,7 +48,9 @@ import sys
 class ResolveServer(StreamServer):
 
     def __init__(self, listener, config, **kw):
-        super(ResolveServer, self).__init__(listener, **kw)
+        # pass listener=None for testing purposes (to prevent socket creation)
+        if listener is not None:
+            super(ResolveServer, self).__init__(listener, **kw)
         self.config = config
         self.storage = configure_from_settings('storage',
                 self.config)
@@ -61,7 +63,6 @@ class ResolveServer(StreamServer):
             if cmd.upper() != 'GET':
                 sock.write("500 Invalid Command\n")
             else:
-                import pdb;pdb.set_trace()
                 user_address = self.storage.resolve_alias(alias.strip())
                 if (user_address is not None and
                     user_address.get('email', None) is not None):

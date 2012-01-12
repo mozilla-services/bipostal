@@ -44,6 +44,7 @@ import logging
 import os
 import sys
 
+from bipostal.storage import configure_from_settings
 from config import Config
 from mako.template import Template
 from ppymilter import (ppymilterserver, ppymilterbase)
@@ -66,9 +67,12 @@ class BiPostalMilter(ppymilterbase.PpyMilter):
         logging.getLogger().info("Initializing BiPostal")
         super(BiPostalMilter, self).__init__()
         self.CanChangeBody()
+        self.CanChangeHeaders()
         self._mutations = []
         self._newbody = []
+        self._toCount = 1
         self._info = {}
+        self.storage = configure_from_settings('storage', self.config)
 
     def ChangeBody(self, content):
         try:
@@ -88,8 +92,21 @@ class BiPostalMilter(ppymilterbase.PpyMilter):
                 self._newbody.append(body)
             return self.Continue()
         except Exception, e:
-            logging.getLogger().error("Failure to get body [%s]", str(e))
+            logging.getLogger().error("Failure to get body [%s]" % repr(e))
             return self.Discard()
+
+    # Restart the server and test this....
+    def OnRcptTo(self, cmd, rcpt_to, esmtp_info):
+        try:
+            new_address = self.storage.resolve_alias(rcpt_to)
+            if new_address is not None:
+                self._mutations.append(self.ChangeHeader(self._toCount, 
+                    'To', new_address['email']))
+        except Exception, e:
+            logging.getLogger().error("Address lookup failure [%s]" % repr(e))
+            pass
+        self._toCount = self._toCount + 1
+        return self.Continue();
 
     def OnEndBody(self, cmd):
         logging.getLogger().debug("Applying mutations")

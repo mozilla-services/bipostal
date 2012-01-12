@@ -7,6 +7,7 @@ TOP = $(shell pwd)
 VE = virtualenv
 PY = $(TOP)/bin/python
 EZ = $(TOP)/bin/easy_install
+NO = $(TOP)/bin/nosetests --with-xunit
 
 clean:
 		rm -rf build
@@ -15,6 +16,9 @@ clean:
 
 init:
 	bin/pip install -r dev-reqs.txt
+
+test:
+	$(NO) $(APPNAME)
 
 build: 
 		$(VE) --no-site-packages --distribute .
