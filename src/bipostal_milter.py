@@ -38,16 +38,17 @@
 #  This file alters the content of the mail message.
 # Stripping non-HTML content, wrapping with a header/footer
 
-import asyncore
 import getopt
 import logging
 import os
+import re
 import sys
+import time
 
 from bipostal.storage import configure_from_settings
 from config import Config
 from mako.template import Template
-from ppymilter import (ppymilterserver, ppymilterbase)
+from ppymilter2 import (ppymilterserver, ppymilterbase)
 
 
 class BiPostalMilter(ppymilterbase.PpyMilter):
@@ -61,6 +62,7 @@ class BiPostalMilter(ppymilterbase.PpyMilter):
     """
 
     config = None
+    _dtime = 0
 
     def __init__(self):
         self.config = getConfig()
@@ -69,9 +71,16 @@ class BiPostalMilter(ppymilterbase.PpyMilter):
         self.CanChangeBody()
         self.CanChangeHeaders()
         self._mutations = []
+        self._boundry = None
         self._newbody = []
         self._toCount = 1
         self._info = {}
+        template_dir = os.path.join(self.config.get('default.template_dir',
+                                                    'templates'))
+        self.head_template = Template(filename = os.path.join(template_dir, 
+                'head.mako'))
+        self.foot_template = Template(filename = os.path.join(template_dir, 
+                'foot.mako'))
         self.storage = configure_from_settings('storage', self.config)
 
     def ChangeBody(self, content):
@@ -86,18 +95,44 @@ class BiPostalMilter(ppymilterbase.PpyMilter):
             logging.getLogger().error("Unhandled Exception [%s]", str(e))
             return None
 
+    def OnHeader(self, cmd, header, val=None):
+        stime = time.time()
+        lhead = header.lower()
+        if 'content-type' in lhead and 'multipart' in val.lower():
+            matches = re.search('boundry="([^"]*)"', val)
+            if len(matches.groups()):
+                self._boundry= matches.group(1)
+        self._dtime += time.time() - stime
+        return self.Continue()
+
     def OnBody(self, cmd, body = None):
         try:
             if body:
-                self._newbody.append(body)
-            return self.Continue()
+                stime = time.time()
+                if self._boundry is not None:
+                    for element in body.split(self._boundry):
+                        try:
+                            (subHead, subBody) = body.split("\r\n\r\n", 1)
+                            if 'text/plain' in subHead:
+                                self._newbody.append(subBody)
+                        except ValueError:
+                            pass
+                else:
+                    self._newbody.append(body)
+                self._dtime += time.time() - stime
+                if len(self._newbody):
+                    return self.Continue()
+            logging.getLogger().error("No plain body found")
+            return self.Reject()
         except Exception, e:
             logging.getLogger().error("Failure to get body [%s]" % repr(e))
             return self.Discard()
 
     def OnRcptTo(self, cmd, rcpt_to, esmtp_info):
+        stime = time.time()
         try:
             new_address = self.storage.resolve_alias(rcpt_to)
+            #new_address  =  'user' + (rcpt_to[5:])
             if new_address is not None:
                 self._mutations.append(self.ChangeHeader(self._toCount, 
                     'To', new_address['email']))
@@ -105,29 +140,27 @@ class BiPostalMilter(ppymilterbase.PpyMilter):
             logging.getLogger().error("Address lookup failure [%s]" % repr(e))
             pass
         self._toCount = self._toCount + 1
+        self._dtime += time.time() - stime
         return self.Continue();
 
     def OnEndBody(self, cmd):
+        stime = time.time()
         logging.getLogger().debug("Applying mutations")
-        template_dir = os.path.join(self.config.get('default.template_dir',
-                                                    'templates'))
-        head_template = Template(filename = os.path.join(template_dir, 
-                'head.mako'))
-        foot_template = Template(filename = os.path.join(template_dir, 
-                'foot.mako'))
-
         if len(self._newbody):
-            newbody = "%s\n%s\n%s" % (head_template.render(info = self._info),
+            newbody = "%s\n%s\n%s" % (self.head_template.render(info = self._info),
                                      "".join(self._newbody),
-                                     foot_template.render(info = self._info))
+                                     self.foot_template.render(info = self._info))
             self._mutations.append(self.ChangeBody(newbody))
         actions = self._mutations
         self._mutations = []
+        self._dtime += time.time() - stime
+        logging.getLogger().info("total time: %d" % self._dtime)
         return self.ReturnOnEndBodyActions(actions)
 
     def OnResetState(self):
         logging.getLogger().info("Resetting")
         self._mutations = []
+        self._dtime=0;
 
 
 def getLogger():
@@ -162,5 +195,7 @@ if __name__ == '__main__':
         exit()
     port = config.get('default.port', 9999)
     logger.info("Starting bipostal on port: %s" % port)
-    ppymilterserver.AsyncPpyMilterServer(port, BiPostalMilter)
-    asyncore.loop()
+    server = ppymilterserver.PPYMilterServer(listener=('0', port),
+            handler=BiPostalMilter).server
+    server.serve_forever()
+

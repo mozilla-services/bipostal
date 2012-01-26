@@ -55,6 +55,8 @@ class Sock(object):
 
     def mrecv(self):
         plen = self._sock.recv(4)
+        if not plen:
+            return None
         data = self._sock.recv(struct.unpack('!I', plen)[0])
         return data
 
@@ -76,7 +78,7 @@ class Sock(object):
         self._sock.send(string)
         string = StringIO()
         while 1:
-            data = self._sock.recv(1024)
+            data = self._sock.recv(4)
             if len(data) < 1:
                 break;
             string.write(data)
