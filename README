@@ -14,8 +14,6 @@ GOAL:
 Provide semi-anonymous token to username mapping. This is a proof of concept and may be removed.
 This presumes integration with a redis database that stores mapped nonse tokens to user emails.
 
-TODO: 
-unit test cases
-Funkload tests are done and do exercise APIs.
-
+TODO:
+Nose tests for milter and mapper (from performace test suite)
 
