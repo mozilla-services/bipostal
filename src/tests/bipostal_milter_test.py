@@ -40,7 +40,7 @@ Content-Transfer-Encoding: 7bit\r
 
 ---split 
 """
-        resp = self.milter.OnHeader('H', 'content-type', 'multipart boundry="--split"')
+        resp = self.milter.OnHeader('H', 'content-type', 'multipart boundary="--split"')
         resp = self.milter.OnRcptTo('R', self.alias_t, '')
         self.assertEquals(resp, 'c')
         resp = self.milter.OnBody('B', body)

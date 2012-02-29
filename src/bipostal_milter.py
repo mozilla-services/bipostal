@@ -74,7 +74,7 @@ class BiPostalMilter(ppymilterbase.PpyMilter):
         self.CanChangeBody()
         self.CanChangeHeaders()
         self._mutations = []
-        self._boundry = None
+        self._boundary = None
         self._newbody = []
         self._toCount = 1
         self._info = {}
@@ -102,9 +102,9 @@ class BiPostalMilter(ppymilterbase.PpyMilter):
         stime = time.time()
         lhead = header.lower()
         if 'content-type' in lhead and 'multipart' in val.lower():
-            matches = re.search('boundry="([^"]*)"', val)
-            if len(matches.groups()):
-                self._boundry= matches.group(1)
+            matches = re.search('boundary="([^"]*)"', val)
+            if matches and len(matches.groups()):
+                self._boundary= matches.group(1)
         self._dtime += time.time() - stime
         return self.Continue()
 
@@ -112,8 +112,8 @@ class BiPostalMilter(ppymilterbase.PpyMilter):
         try:
             if body:
                 stime = time.time()
-                if self._boundry is not None:
-                    for element in body.split(self._boundry):
+                if self._boundary is not None:
+                    for element in body.split(self._boundary):
                         try:
                             (subHead, subBody) = element.split("\r\n\r\n", 1)
                             if 'text/plain' in subHead:
