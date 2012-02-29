@@ -46,10 +46,10 @@ Content-Transfer-Encoding: 7bit\r
         resp = self.milter.OnBody('B', body)
         self.assertEquals(resp, 'c')
         resp = self.milter.OnEndBody('E')
-        print resp;
+        #print resp;
         self.assertTrue(self.user_t in resp[0])
-        self.assertTrue("Plain text content" in resp[1])
-        self.assertTrue('Invalid Content' not in resp[1])
+        self.assertTrue("Plain text content" in resp[2])
+        self.assertTrue('Invalid Content' not in resp[2])
         # check an inactive title
         self.milter.OnResetState()
         self.storage.set_status_alias(self.user_t, self.alias_t, status='inactive')

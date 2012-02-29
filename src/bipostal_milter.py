@@ -71,8 +71,11 @@ class BiPostalMilter(ppymilterbase.PpyMilter):
             self.config = config
         logging.getLogger().info("Initializing BiPostal")
         super(BiPostalMilter, self).__init__()
+        # Ask for permissions
         self.CanChangeBody()
         self.CanChangeHeaders()
+        self.CanAddHeaders()
+        #init variables
         self._mutations = []
         self._boundary = None
         self._newbody = []
@@ -171,27 +174,36 @@ class BiPostalMilter(ppymilterbase.PpyMilter):
     def OnEndBody(self, cmd):
         stime = time.time()
         logging.getLogger().debug("Applying mutations")
-        self._info['manageurl'] = self.config.get('manageurl', 'https://bipostal.diresworb.org/#default')
+        self._info['manageurl'] = self.config.get('manageurl', 
+                'https://bipostal.diresworb.org/#default')
         if len(self._newbody):
-            newtxtbody = "%s\r\n%s\r\n%s" % (self.txt_head_template.render(info = self._info),
-                                     "".join(self._newbody),
-                                     self.txt_foot_template.render(info = self._info))
+            if not self._split:
+                self._mutations.append(
+                    self.InsertHeader(9999, 'Content=Type',
+                    ('multipart/alternative;  boundary="%s"'
+                        ) % self.getSplit()))
+            newtxtbody = "%s\r\n%s\r\n%s" % (
+                self.txt_head_template.render(info = self._info),
+                "".join(self._newbody),
+                self.txt_foot_template.render(info = self._info))
             newhtmlbody = "%s\r\n%s\r\n%s" % (
-                    self.html_head_template.render(info=self._info),
-                    "".join(self._newbody),
-                    self.html_foot_template.render(info=self._info))
-            newmsg = ("%s\r\n"
-                    "Content-Type: text/plain; charset=utf-8;\r\n"
-                    "Content-Transfer-Encoding: 7bit\r\n\r\n"
-                    "%s\r\n"
-                    "%s\r\n"
-                    "Content-Type: text/html; charset=utf-8\r\n"
-                    "Content-Transfer-Encoding: 7bit\r\n\r\n"
-                    "%s\r\n") % (
-                            self.getSplit(),
-                            newtxtbody,
-                            self.getSplit(),
-                            newhtmlbody)
+                self.html_head_template.render(info=self._info),
+                "".join(self._newbody),
+                self.html_foot_template.render(info=self._info))
+            newmsg = ("--%s\r\n"
+                "Content-Type: text/plain; charset=utf-8;\r\n"
+                "Content-Transfer-Encoding: 7bit\r\n\r\n"
+                "%s\r\n"
+                "--%s\r\n"
+                "Content-Type: text/html; charset=utf-8\r\n"
+                "Content-Transfer-Encoding: 7bit\r\n\r\n"
+                "%s\r\n"
+                "--%s\r\n") % (
+                    self.getSplit(),
+                    newtxtbody,
+                    self.getSplit(),
+                    newhtmlbody,
+                    self.getSplit())
             self._mutations.append(self.ChangeBody(newmsg))
         actions = self._mutations
         self._mutations = []
