@@ -64,8 +64,11 @@ class BiPostalMilter(ppymilterbase.PpyMilter):
     config = None
     _dtime = 0
 
-    def __init__(self):
-        self.config = getConfig()
+    def __init__(self, config=None):
+        if config is None:
+            self.config = getConfig()
+        else:
+            self.config = config
         logging.getLogger().info("Initializing BiPostal")
         super(BiPostalMilter, self).__init__()
         self.CanChangeBody()
@@ -112,7 +115,7 @@ class BiPostalMilter(ppymilterbase.PpyMilter):
                 if self._boundry is not None:
                     for element in body.split(self._boundry):
                         try:
-                            (subHead, subBody) = body.split("\r\n\r\n", 1)
+                            (subHead, subBody) = element.split("\r\n\r\n", 1)
                             if 'text/plain' in subHead:
                                 self._newbody.append(subBody)
                         except ValueError:
@@ -131,21 +134,34 @@ class BiPostalMilter(ppymilterbase.PpyMilter):
     def OnRcptTo(self, cmd, rcpt_to, esmtp_info):
         stime = time.time()
         try:
-            new_address = self.storage.resolve_alias(rcpt_to)
-            #new_address  =  'user' + (rcpt_to[5:])
-            if new_address is not None:
-                self._mutations.append(self.ChangeHeader(self._toCount, 
-                    'To', new_address['email']))
+            # if an address record is set as inactive, we shouldn't send the notification,
+            # but should we still send the mail? That is currently undecided.
+            self._info = self.storage.resolve_alias(rcpt_to)
+            if self._info is not None:
+                status = self._info.get('status', 'invalid')
+                if status == 'active':
+                    self._mutations.append(self.ChangeHeader(self._toCount, 
+                        'To', self._info['email']))
+                    self._toCount = self._toCount + 1
+                    self._dtime += time.time() - stime
+                    return self.Continue();
+                if status == 'inactive':
+                    self._dtime += time.time() - stime
+                    logging.getLogger().debug('%s is inactive, Discarding' %
+                            self._info.get('alias')) 
+                    return self.Discard()
+        #default case: status is "deleted" or "invalid", or an error 
+        # so reject the message
         except Exception, e:
             logging.getLogger().error("Address lookup failure [%s]" % repr(e))
             pass
-        self._toCount = self._toCount + 1
         self._dtime += time.time() - stime
-        return self.Continue();
+        return self.Reject()
 
     def OnEndBody(self, cmd):
         stime = time.time()
         logging.getLogger().debug("Applying mutations")
+        self._info['manageurl'] = self.config.get('manageurl', 'https://bipostal.diresworb.org/#default')
         if len(self._newbody):
             newbody = "%s\n%s\n%s" % (self.head_template.render(info = self._info),
                                      "".join(self._newbody),
