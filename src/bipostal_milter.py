@@ -78,12 +78,17 @@ class BiPostalMilter(ppymilterbase.PpyMilter):
         self._newbody = []
         self._toCount = 1
         self._info = {}
+        self._split = None
         template_dir = os.path.join(self.config.get('default.template_dir',
                                                     'templates'))
-        self.head_template = Template(filename = os.path.join(template_dir, 
-                'head.mako'))
-        self.foot_template = Template(filename = os.path.join(template_dir, 
-                'foot.mako'))
+        self.txt_head_template = Template(filename = os.path.join(template_dir, 
+                'head_txt.mako'))
+        self.txt_foot_template = Template(filename = os.path.join(template_dir, 
+                'foot_txt.mako'))
+        self.html_head_template = Template(filename = os.path.join(template_dir, 
+                'head_html.mako'))
+        self.html_foot_template = Template(filename = os.path.join(template_dir, 
+                'foot_html.mako'))
         self.storage = configure_from_settings('storage', self.config)
 
     def ChangeBody(self, content):
@@ -158,15 +163,36 @@ class BiPostalMilter(ppymilterbase.PpyMilter):
         self._dtime += time.time() - stime
         return self.Reject()
 
+    def getSplit(self):
+        if self._boundary is None:
+            self._boundary = "---split-%s" % str(int(time.time()))
+        return self._boundary
+
     def OnEndBody(self, cmd):
         stime = time.time()
         logging.getLogger().debug("Applying mutations")
         self._info['manageurl'] = self.config.get('manageurl', 'https://bipostal.diresworb.org/#default')
         if len(self._newbody):
-            newbody = "%s\n%s\n%s" % (self.head_template.render(info = self._info),
+            newtxtbody = "%s\r\n%s\r\n%s" % (self.txt_head_template.render(info = self._info),
                                      "".join(self._newbody),
-                                     self.foot_template.render(info = self._info))
-            self._mutations.append(self.ChangeBody(newbody))
+                                     self.txt_foot_template.render(info = self._info))
+            newhtmlbody = "%s\r\n%s\r\n%s" % (
+                    self.html_head_template.render(info=self._info),
+                    "".join(self._newbody),
+                    self.html_foot_template.render(info=self._info))
+            newmsg = ("%s\r\n"
+                    "Content-Type: text/plain; charset=utf-8;\r\n"
+                    "Content-Transfer-Encoding: 7bit\r\n\r\n"
+                    "%s\r\n"
+                    "%s\r\n"
+                    "Content-Type: text/html; charset=utf-8\r\n"
+                    "Content-Transfer-Encoding: 7bit\r\n\r\n"
+                    "%s\r\n") % (
+                            self.getSplit(),
+                            newtxtbody,
+                            self.getSplit(),
+                            newhtmlbody)
+            self._mutations.append(self.ChangeBody(newmsg))
         actions = self._mutations
         self._mutations = []
         self._dtime += time.time() - stime

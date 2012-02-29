@@ -26,26 +26,27 @@ class TestMilter(unittest.TestCase):
     def test_all(self):
         body = """
 message cruft
----split
+--my_split
 Content-Type: text/plain; charset=UTF-8; format=flowed\r
 Content-Transfer-Encoding: 7bit\r
 \r
 Plain text content
 
----split
+--my_split
 Content-Type: text/html; charset=UTF-8;\r
 Content-Transfer-Encoding: 7bit\r
 \r
 <i>Invalid Content</i>
 
----split 
+--my_split 
 """
-        resp = self.milter.OnHeader('H', 'content-type', 'multipart boundary="--split"')
+        resp = self.milter.OnHeader('H', 'content-type', 'multipart boundary="--my_split"')
         resp = self.milter.OnRcptTo('R', self.alias_t, '')
         self.assertEquals(resp, 'c')
         resp = self.milter.OnBody('B', body)
         self.assertEquals(resp, 'c')
         resp = self.milter.OnEndBody('E')
+        print resp;
         self.assertTrue(self.user_t in resp[0])
         self.assertTrue("Plain text content" in resp[1])
         self.assertTrue('Invalid Content' not in resp[1])
