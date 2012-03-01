@@ -76,6 +76,7 @@ class BiPostalMilter(ppymilterbase.PpyMilter):
         self.CanChangeHeaders()
         self.CanAddHeaders()
         #init variables
+        self._hasCT = False
         self._mutations = []
         self._boundary = None
         self._newbody = []
@@ -109,10 +110,12 @@ class BiPostalMilter(ppymilterbase.PpyMilter):
     def OnHeader(self, cmd, header, val=None):
         stime = time.time()
         lhead = header.lower()
-        if 'content-type' in lhead and 'multipart' in val.lower():
-            matches = re.search('boundary="([^"]*)"', val)
-            if matches and len(matches.groups()):
-                self._boundary= matches.group(1)
+        if 'content-type' in lhead:
+            self._hasCT = True
+            if 'multipart' in val.lower():
+                matches = re.search('boundary="([^"]*)"', val)
+                if matches and len(matches.groups()):
+                    self._boundary= matches.group(1)
         self._dtime += time.time() - stime
         return self.Continue()
 
@@ -177,11 +180,14 @@ class BiPostalMilter(ppymilterbase.PpyMilter):
         self._info['manageurl'] = self.config.get('manageurl', 
                 'https://bipostal.diresworb.org/#default')
         if len(self._newbody):
-            if not self._split:
+            splitter = ('multipart/alternative; boundary="%s"'
+                    ) % self.getSplit()
+            if self._hasCT:
                 self._mutations.append(
-                    self.InsertHeader(9999, 'Content=Type',
-                    ('multipart/alternative;  boundary="%s"'
-                        ) % self.getSplit()))
+                    self.ChangeHeader(1, 'Content-Type', splitter))
+            else:
+                self._mutations.append(
+                    self.AddHeader(999, 'Content-Type', splitter))
             newtxtbody = "%s\r\n%s\r\n%s" % (
                 self.txt_head_template.render(info = self._info),
                 "".join(self._newbody),
