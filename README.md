@@ -26,8 +26,11 @@ altogether.
 ### What's it need?
 
 This package requires the following packages:
+
 * Python 2.6
+
 * PostFix (or any other milter compatible MTA)
+
 * <a href="https://github.com/jrconlin/ppymilter2">ppymilter2</a>
 
     Slightly tweaked to use gevent instead of async core
