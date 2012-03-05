@@ -4,5 +4,7 @@ funkload
 paramiko
 greenlet
 gevent
+mako
 sqlalchemy
 -e git://github.com/jrconlin/bipostal_store#egg=bipostal_storage
+-e git://github.com/jrconlin/ppymilter2#egg=ppymilter2
